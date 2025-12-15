@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/lxzan/gws"
 	anchorBlocks "github.com/modulrcloud/modulr-anchors-core/block_pack"
@@ -12,6 +14,23 @@ import (
 	"github.com/modulrcloud/modulr-core/structures"
 	"github.com/modulrcloud/point-of-distribution/databases"
 )
+
+type lockEntry struct {
+	mu       sync.Mutex
+	refCount int32
+}
+
+type lockManager struct {
+	locks     sync.Map
+	semaphore chan struct{}
+}
+
+func newLockManager(limit int) *lockManager {
+	if limit <= 0 {
+		limit = 100
+	}
+	return &lockManager{semaphore: make(chan struct{}, limit)}
+}
 
 func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := composeBlockKey(req.Locator)
@@ -63,7 +82,7 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 	}
 }
 
-func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores, locks *lockManager) {
 	locator, blockKey := blockLocatorFromBlock(req.Block), ""
 	if locator != nil {
 		blockKey = composeBlockKey(*locator)
@@ -71,20 +90,22 @@ func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Con
 	if blockKey == "" || stores == nil || stores.CoreBlocksData == nil {
 		return
 	}
-	if !req.Block.VerifySignature() || !validateAfpForBlock(req.Block.Index, req.Block.PrevHash, req.Afp) {
-		return
-	}
-	if blockBytes, err := json.Marshal(req.Block); err == nil {
-		if err := stores.CoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
-			if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
-				_ = stores.CoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
-			}
-			acknowledge(connection)
+	withBlockLock(blockKey, locks, func() {
+		if !req.Block.VerifySignature() || !validateAfpForBlock(req.Block.Index, req.Block.PrevHash, req.Afp) {
+			return
 		}
-	}
+		if blockBytes, err := json.Marshal(req.Block); err == nil {
+			if err := stores.CoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
+				if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
+					_ = stores.CoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
+				}
+				acknowledge(connection)
+			}
+		}
+	})
 }
 
-func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores, locks *lockManager) {
 	locator, blockKey := blockLocatorFromAnchorBlock(req.Block), ""
 	if locator != nil {
 		blockKey = composeBlockKey(*locator)
@@ -92,17 +113,19 @@ func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connect
 	if blockKey == "" || stores == nil || stores.AnchorsCoreBlocksData == nil {
 		return
 	}
-	if !req.Block.VerifySignature() || !validateAnchorAfpForBlock(req.Block.Index, req.Block.PrevHash, req.Afp) {
-		return
-	}
-	if blockBytes, err := json.Marshal(req.Block); err == nil {
-		if err := stores.AnchorsCoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
-			if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
-				_ = stores.AnchorsCoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
-			}
-			acknowledge(connection)
+	withBlockLock(blockKey, locks, func() {
+		if !req.Block.VerifySignature() || !validateAnchorAfpForBlock(req.Block.Index, req.Block.PrevHash, req.Afp) {
+			return
 		}
-	}
+		if blockBytes, err := json.Marshal(req.Block); err == nil {
+			if err := stores.AnchorsCoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
+				if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
+					_ = stores.AnchorsCoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
+				}
+				acknowledge(connection)
+			}
+		}
+	})
 }
 
 func composeBlockKey(locator BlockLocator) string {
@@ -177,6 +200,67 @@ func validateAnchorAfpForBlock(blockIndex int, prevHash string, afp anchorsStruc
 		return false
 	}
 	return true
+}
+
+func (lm *lockManager) withLock(blockKey string, fn func()) {
+	if lm == nil || blockKey == "" || fn == nil {
+		return
+	}
+	entry := lm.acquireEntry(blockKey)
+	entry.mu.Lock()
+	fn()
+	entry.mu.Unlock()
+	lm.releaseEntry(blockKey, entry)
+}
+
+func withBlockLock(blockKey string, lm *lockManager, fn func()) {
+	if lm == nil {
+		return
+	}
+	lm.withLock(blockKey, fn)
+}
+
+func (lm *lockManager) acquireEntry(blockKey string) *lockEntry {
+	if val, ok := lm.locks.Load(blockKey); ok {
+		entry := val.(*lockEntry)
+		atomic.AddInt32(&entry.refCount, 1)
+		return entry
+	}
+
+	lm.acquireSlot()
+	entry := &lockEntry{refCount: 1}
+	actual, loaded := lm.locks.LoadOrStore(blockKey, entry)
+	if loaded {
+		lm.releaseSlot()
+		entry = actual.(*lockEntry)
+		atomic.AddInt32(&entry.refCount, 1)
+	}
+
+	return entry
+}
+
+func (lm *lockManager) releaseEntry(blockKey string, entry *lockEntry) {
+	if entry == nil {
+		return
+	}
+	if atomic.AddInt32(&entry.refCount, -1) == 0 {
+		lm.locks.Delete(blockKey)
+		lm.releaseSlot()
+	}
+}
+
+func (lm *lockManager) acquireSlot() {
+	if lm.semaphore == nil {
+		return
+	}
+	lm.semaphore <- struct{}{}
+}
+
+func (lm *lockManager) releaseSlot() {
+	if lm.semaphore == nil {
+		return
+	}
+	<-lm.semaphore
 }
 
 func acknowledge(connection *gws.Conn) {

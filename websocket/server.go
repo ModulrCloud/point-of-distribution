@@ -12,11 +12,9 @@ import (
 )
 
 type handler struct {
-	stores *databases.Stores
-}
-
-type HandlerOption struct {
-	Stores *databases.Stores
+	stores      *databases.Stores
+	coreLocks   *lockManager
+	anchorLocks *lockManager
 }
 
 func (h *handler) OnOpen(conn *gws.Conn) {}
@@ -54,14 +52,14 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 	case "accept_block_with_afp":
 		var req AcceptBlockWithAfpRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleAcceptBlockWithAfp(req, connection, h.stores)
+			handleAcceptBlockWithAfp(req, connection, h.stores, h.coreLocks)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_block_with_afp_request"}`))
 		}
 	case "accept_anchor_block_with_afp":
 		var req AcceptAnchorBlockWithAfpRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleAcceptAnchorBlockWithAfp(req, connection, h.stores)
+			handleAcceptAnchorBlockWithAfp(req, connection, h.stores, h.anchorLocks)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_anchor_block_with_afp_request"}`))
 		}
@@ -71,7 +69,9 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 }
 
 func CreateWebsocketServer(cfg config.Config, stores *databases.Stores) error {
-	upgrader := gws.NewUpgrader(&handler{stores: stores}, &gws.ServerOption{
+	coreLocks := newLockManager(cfg.MaxConcurrentLocks)
+	anchorLocks := newLockManager(cfg.MaxConcurrentLocks)
+	upgrader := gws.NewUpgrader(&handler{stores: stores, coreLocks: coreLocks, anchorLocks: anchorLocks}, &gws.ServerOption{
 		ParallelEnabled:   true,
 		Recovery:          gws.Recovery,
 		PermessageDeflate: gws.PermessageDeflate{Enabled: true},

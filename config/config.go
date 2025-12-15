@@ -7,16 +7,18 @@ import (
 )
 
 type Config struct {
-	WSInterface string `json:"wsInterface"`
-	WSPort      int    `json:"wsPort"`
-	DataPath    string `json:"dataPath"`
+	WSInterface        string `json:"wsInterface"`
+	WSPort             int    `json:"wsPort"`
+	DataPath           string `json:"dataPath"`
+	MaxConcurrentLocks int    `json:"maxConcurrentLocks"`
 }
 
 func Load() Config {
 	cfg := Config{
-		WSInterface: "0.0.0.0",
-		WSPort:      9070,
-		DataPath:    "poddata",
+		WSInterface:        "0.0.0.0",
+		WSPort:             9070,
+		DataPath:           "poddata",
+		MaxConcurrentLocks: 100,
 	}
 
 	configPath := "configs.json"
