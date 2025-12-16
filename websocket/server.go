@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/lxzan/gws"
 	"github.com/modulrcloud/point-of-distribution/config"
 	"github.com/modulrcloud/point-of-distribution/databases"
+
+	"github.com/lxzan/gws"
 )
 
 type handler struct {
