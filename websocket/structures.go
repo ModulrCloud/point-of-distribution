@@ -37,6 +37,21 @@ type AnchorBlockWithAfpResponse struct {
 	Afp   *anchorsStructs.AggregatedFinalizationProof `json:"afp"`
 }
 
+type WsAggregatedLeaderFinalizationProofStoreRequest struct {
+	Route string                                        `json:"route"`
+	Proof coreStructs.AggregatedLeaderFinalizationProof `json:"proof"`
+}
+
+type WsAggregatedLeaderFinalizationProofRequest struct {
+	Route      string `json:"route"`
+	EpochIndex int    `json:"epochIndex"`
+	Leader     string `json:"leader"`
+}
+
+type WsAggregatedLeaderFinalizationProofResponse struct {
+	Proof *coreStructs.AggregatedLeaderFinalizationProof `json:"proof"`
+}
+
 type AcceptBlockWithAfpRequest struct {
 	Route string                                   `json:"route"`
 	Block coreBlocks.Block                         `json:"block"`
