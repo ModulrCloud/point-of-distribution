@@ -1,11 +1,6 @@
 package websocket
 
-import (
-	anchorBlocks "github.com/modulrcloud/modulr-anchors-core/block_pack"
-	anchorsStructs "github.com/modulrcloud/modulr-anchors-core/structures"
-	coreBlocks "github.com/modulrcloud/modulr-core/block_pack"
-	coreStructs "github.com/modulrcloud/modulr-core/structures"
-)
+import "github.com/modulrcloud/point-of-distribution/external_structs"
 
 type incomingMsg struct {
 	Route string `json:"route"`
@@ -23,8 +18,8 @@ type BlockWithAfpRequest struct {
 }
 
 type BlockWithAfpResponse struct {
-	Block *coreBlocks.Block                        `json:"block"`
-	Afp   *coreStructs.AggregatedFinalizationProof `json:"afp"`
+	Block *external_structs.CoreBlock                   `json:"block"`
+	Afp   *external_structs.AggregatedFinalizationProof `json:"afp"`
 }
 
 type AnchorBlockWithAfpRequest struct {
@@ -33,35 +28,35 @@ type AnchorBlockWithAfpRequest struct {
 }
 
 type AnchorBlockWithAfpResponse struct {
-	Block *anchorBlocks.Block                         `json:"block"`
-	Afp   *anchorsStructs.AggregatedFinalizationProof `json:"afp"`
+	Block *external_structs.AnchorBlock                 `json:"block"`
+	Afp   *external_structs.AggregatedFinalizationProof `json:"afp"`
 }
 
-type WsAggregatedLeaderFinalizationProofStoreRequest struct {
-	Route string                                        `json:"route"`
-	Proof coreStructs.AggregatedLeaderFinalizationProof `json:"proof"`
+type AggregatedLeaderFinalizationProofStoreRequest struct {
+	Route string                                             `json:"route"`
+	Proof external_structs.AggregatedLeaderFinalizationProof `json:"proof"`
 }
 
-type WsAggregatedLeaderFinalizationProofRequest struct {
+type AggregatedLeaderFinalizationProofRequest struct {
 	Route      string `json:"route"`
 	EpochIndex int    `json:"epochIndex"`
 	Leader     string `json:"leader"`
 }
 
-type WsAggregatedLeaderFinalizationProofResponse struct {
-	Proof *coreStructs.AggregatedLeaderFinalizationProof `json:"proof"`
+type AggregatedLeaderFinalizationProofResponse struct {
+	Proof *external_structs.AggregatedLeaderFinalizationProof `json:"proof"`
 }
 
 type AcceptBlockWithAfpRequest struct {
-	Route string                                   `json:"route"`
-	Block coreBlocks.Block                         `json:"block"`
-	Afp   *coreStructs.AggregatedFinalizationProof `json:"afp"`
+	Route string                                        `json:"route"`
+	Block external_structs.CoreBlock                    `json:"block"`
+	Afp   *external_structs.AggregatedFinalizationProof `json:"afp"`
 }
 
 type AcceptAnchorBlockWithAfpRequest struct {
-	Route string                                      `json:"route"`
-	Block anchorBlocks.Block                          `json:"block"`
-	Afp   *anchorsStructs.AggregatedFinalizationProof `json:"afp"`
+	Route string                                        `json:"route"`
+	Block external_structs.AnchorBlock                  `json:"block"`
+	Afp   *external_structs.AggregatedFinalizationProof `json:"afp"`
 }
 
 type statusResponse struct {

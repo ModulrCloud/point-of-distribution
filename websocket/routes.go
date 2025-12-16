@@ -8,12 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	anchorBlocks "github.com/modulrcloud/modulr-anchors-core/block_pack"
-	anchorsStructs "github.com/modulrcloud/modulr-anchors-core/structures"
-	coreBlocks "github.com/modulrcloud/modulr-core/block_pack"
-	coreStructs "github.com/modulrcloud/modulr-core/structures"
-
 	"github.com/modulrcloud/point-of-distribution/databases"
+	"github.com/modulrcloud/point-of-distribution/external_structs"
 
 	"github.com/lxzan/gws"
 )
@@ -44,14 +40,14 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 	nextBlockId := nextBlockId(key)
 	if nextBlockId != "" {
 		if afpBytes, err := stores.CoreBlocksData.Get([]byte("AFP:"+nextBlockId), nil); err == nil {
-			var afp coreStructs.AggregatedFinalizationProof
+			var afp external_structs.AggregatedFinalizationProof
 			if err := json.Unmarshal(afpBytes, &afp); err == nil {
 				resp.Afp = &afp
 			}
 		}
 	}
 	if blockBytes, err := stores.CoreBlocksData.Get([]byte(key), nil); err == nil {
-		var block coreBlocks.Block
+		var block external_structs.CoreBlock
 		if err := json.Unmarshal(blockBytes, &block); err == nil {
 			resp.Block = &block
 		}
@@ -72,14 +68,14 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 	nextBlockId := nextBlockId(key)
 	if nextBlockId != "" {
 		if afpBytes, err := stores.AnchorsCoreBlocksData.Get([]byte("AFP:"+nextBlockId), nil); err == nil {
-			var afp anchorsStructs.AggregatedFinalizationProof
+			var afp external_structs.AggregatedFinalizationProof
 			if err := json.Unmarshal(afpBytes, &afp); err == nil {
 				resp.Afp = &afp
 			}
 		}
 	}
 	if blockBytes, err := stores.AnchorsCoreBlocksData.Get([]byte(key), nil); err == nil {
-		var block anchorBlocks.Block
+		var block external_structs.AnchorBlock
 		if err := json.Unmarshal(blockBytes, &block); err == nil {
 			resp.Block = &block
 		}
@@ -91,7 +87,7 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 	}
 }
 
-func handleAcceptAggregatedLeaderFinalizationProof(req WsAggregatedLeaderFinalizationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptAggregatedLeaderFinalizationProof(req AggregatedLeaderFinalizationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := composeAggregatedLeaderFinalizationProofKey(req.Proof.EpochIndex, req.Proof.Leader)
 	if key == "" || stores == nil || stores.AggregatedLeaderFinalizationProofs == nil {
 		return
@@ -104,15 +100,15 @@ func handleAcceptAggregatedLeaderFinalizationProof(req WsAggregatedLeaderFinaliz
 	}
 }
 
-func handleGetAggregatedLeaderFinalizationProof(req WsAggregatedLeaderFinalizationProofRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleGetAggregatedLeaderFinalizationProof(req AggregatedLeaderFinalizationProofRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := composeAggregatedLeaderFinalizationProofKey(req.EpochIndex, req.Leader)
 	if key == "" || stores == nil || stores.AggregatedLeaderFinalizationProofs == nil {
 		return
 	}
 
-	var resp WsAggregatedLeaderFinalizationProofResponse
+	var resp AggregatedLeaderFinalizationProofResponse
 	if proofBytes, err := stores.AggregatedLeaderFinalizationProofs.Get([]byte(key), nil); err == nil {
-		var proof coreStructs.AggregatedLeaderFinalizationProof
+		var proof external_structs.AggregatedLeaderFinalizationProof
 		if err := json.Unmarshal(proofBytes, &proof); err == nil {
 			resp.Proof = &proof
 		}
@@ -131,9 +127,6 @@ func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Con
 		return
 	}
 	withBlockLock(blockKey, locks, func() {
-		if !req.Block.VerifySignature() {
-			return
-		}
 		if req.Block.Index > 0 {
 			if req.Afp == nil || !validateAfpForBlock(req.Block.Index, req.Block.PrevHash, *req.Afp) {
 				return
@@ -161,9 +154,6 @@ func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connect
 		return
 	}
 	withBlockLock(blockKey, locks, func() {
-		if !req.Block.VerifySignature() {
-			return
-		}
 		if req.Block.Index > 0 {
 			if req.Afp == nil || !validateAnchorAfpForBlock(req.Block.Index, req.Block.PrevHash, *req.Afp) {
 				return
@@ -202,7 +192,7 @@ func composeBlockKey(locator BlockLocator) string {
 	return strings.Join([]string{strconv.Itoa(locator.EpochIndex), locator.Creator, strconv.Itoa(locator.Index)}, ":")
 }
 
-func blockLocatorFromBlock(block coreBlocks.Block) *BlockLocator {
+func blockLocatorFromBlock(block external_structs.CoreBlock) *BlockLocator {
 	epochIndex := extractEpochIndex(block.Epoch)
 	if epochIndex < 0 {
 		return nil
@@ -210,7 +200,7 @@ func blockLocatorFromBlock(block coreBlocks.Block) *BlockLocator {
 	return &BlockLocator{EpochIndex: epochIndex, Creator: block.Creator, Index: block.Index}
 }
 
-func blockLocatorFromAnchorBlock(block anchorBlocks.Block) *BlockLocator {
+func blockLocatorFromAnchorBlock(block external_structs.AnchorBlock) *BlockLocator {
 	epochIndex := extractEpochIndex(block.Epoch)
 	if epochIndex < 0 {
 		return nil
@@ -238,7 +228,7 @@ func composeAggregatedLeaderFinalizationProofKey(epochIndex int, leader string) 
 	return fmt.Sprintf("ALFP:%d:%s", epochIndex, leader)
 }
 
-func validateAfpForBlock(blockIndex int, prevHash string, afp coreStructs.AggregatedFinalizationProof) bool {
+func validateAfpForBlock(blockIndex int, prevHash string, afp external_structs.AggregatedFinalizationProof) bool {
 	if blockIndex <= 0 {
 		return true
 	}
@@ -257,7 +247,7 @@ func validateAfpForBlock(blockIndex int, prevHash string, afp coreStructs.Aggreg
 	return true
 }
 
-func validateAnchorAfpForBlock(blockIndex int, prevHash string, afp anchorsStructs.AggregatedFinalizationProof) bool {
+func validateAnchorAfpForBlock(blockIndex int, prevHash string, afp external_structs.AggregatedFinalizationProof) bool {
 	if blockIndex <= 0 {
 		return true
 	}
