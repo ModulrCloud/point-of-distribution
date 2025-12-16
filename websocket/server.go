@@ -63,6 +63,20 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_anchor_block_with_afp_request"}`))
 		}
+	case "accept_aggregated_leader_finalization_proof":
+		var req WsAggregatedLeaderFinalizationProofStoreRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleAcceptAggregatedLeaderFinalizationProof(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_leader_finalization_proof_request"}`))
+		}
+	case "get_aggregated_leader_finalization_proof":
+		var req WsAggregatedLeaderFinalizationProofRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleGetAggregatedLeaderFinalizationProof(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_leader_finalization_proof_request"}`))
+		}
 	default:
 		connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"unknown_type"}`))
 	}

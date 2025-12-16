@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,6 +88,37 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 		if data, err := json.Marshal(resp); err == nil {
 			connection.WriteMessage(gws.OpcodeText, data)
 		}
+	}
+}
+
+func handleAcceptAggregatedLeaderFinalizationProof(req WsAggregatedLeaderFinalizationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	key := composeAggregatedLeaderFinalizationProofKey(req.Proof.EpochIndex, req.Proof.Leader)
+	if key == "" || stores == nil || stores.AggregatedLeaderFinalizationProofs == nil {
+		return
+	}
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.AggregatedLeaderFinalizationProofs.Put([]byte(key), proofBytes, nil); err == nil {
+			acknowledge(connection)
+		}
+	}
+}
+
+func handleGetAggregatedLeaderFinalizationProof(req WsAggregatedLeaderFinalizationProofRequest, connection *gws.Conn, stores *databases.Stores) {
+	key := composeAggregatedLeaderFinalizationProofKey(req.EpochIndex, req.Leader)
+	if key == "" || stores == nil || stores.AggregatedLeaderFinalizationProofs == nil {
+		return
+	}
+
+	var resp WsAggregatedLeaderFinalizationProofResponse
+	if proofBytes, err := stores.AggregatedLeaderFinalizationProofs.Get([]byte(key), nil); err == nil {
+		var proof coreStructs.AggregatedLeaderFinalizationProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
 	}
 }
 
@@ -197,6 +229,13 @@ func extractEpochIndex(epoch string) int {
 		return -1
 	}
 	return idx
+}
+
+func composeAggregatedLeaderFinalizationProofKey(epochIndex int, leader string) string {
+	if epochIndex < 0 || leader == "" {
+		return ""
+	}
+	return fmt.Sprintf("ALFP:%d:%s", epochIndex, leader)
 }
 
 func validateAfpForBlock(blockIndex int, prevHash string, afp coreStructs.AggregatedFinalizationProof) bool {
