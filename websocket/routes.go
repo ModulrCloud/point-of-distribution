@@ -7,12 +7,14 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/lxzan/gws"
 	anchorBlocks "github.com/modulrcloud/modulr-anchors-core/block_pack"
 	anchorsStructs "github.com/modulrcloud/modulr-anchors-core/structures"
 	coreBlocks "github.com/modulrcloud/modulr-core/block_pack"
-	"github.com/modulrcloud/modulr-core/structures"
+	coreStructs "github.com/modulrcloud/modulr-core/structures"
+
 	"github.com/modulrcloud/point-of-distribution/databases"
+
+	"github.com/lxzan/gws"
 )
 
 type lockEntry struct {
@@ -33,7 +35,7 @@ func newLockManager(limit int) *lockManager {
 }
 
 func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
-	key := composeBlockKey(req.Locator)
+	key := req.BlockId
 	if key == "" || stores == nil || stores.CoreBlocksData == nil {
 		return
 	}
@@ -42,11 +44,13 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 		if err := json.Unmarshal(blockBytes, &block); err == nil {
 			resp := BlockWithAfpResponse{Block: &block}
 			if block.Index > 0 {
-				prevKey := composeBlockKey(BlockLocator{EpochIndex: req.Locator.EpochIndex, Creator: block.Creator, Index: block.Index - 1})
-				if afpBytes, err := stores.CoreBlocksData.Get([]byte("AFP:"+prevKey), nil); err == nil {
-					var afp structures.AggregatedFinalizationProof
-					if err := json.Unmarshal(afpBytes, &afp); err == nil {
-						resp.Afp = &afp
+				prevKey := previousBlockId(block)
+				if prevKey != "" {
+					if afpBytes, err := stores.CoreBlocksData.Get([]byte("AFP:"+prevKey), nil); err == nil {
+						var afp coreStructs.AggregatedFinalizationProof
+						if err := json.Unmarshal(afpBytes, &afp); err == nil {
+							resp.Afp = &afp
+						}
 					}
 				}
 			}
@@ -58,7 +62,7 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 }
 
 func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
-	key := composeBlockKey(req.Locator)
+	key := req.BlockId
 	if key == "" || stores == nil || stores.AnchorsCoreBlocksData == nil {
 		return
 	}
@@ -67,11 +71,13 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 		if err := json.Unmarshal(blockBytes, &block); err == nil {
 			resp := AnchorBlockWithAfpResponse{Block: &block}
 			if block.Index > 0 {
-				prevKey := composeBlockKey(BlockLocator{EpochIndex: req.Locator.EpochIndex, Creator: block.Creator, Index: block.Index - 1})
-				if afpBytes, err := stores.AnchorsCoreBlocksData.Get([]byte("AFP:"+prevKey), nil); err == nil {
-					var afp anchorsStructs.AggregatedFinalizationProof
-					if err := json.Unmarshal(afpBytes, &afp); err == nil {
-						resp.Afp = &afp
+				prevKey := previousAnchorBlockId(block)
+				if prevKey != "" {
+					if afpBytes, err := stores.AnchorsCoreBlocksData.Get([]byte("AFP:"+prevKey), nil); err == nil {
+						var afp anchorsStructs.AggregatedFinalizationProof
+						if err := json.Unmarshal(afpBytes, &afp); err == nil {
+							resp.Afp = &afp
+						}
 					}
 				}
 			}
@@ -135,6 +141,24 @@ func composeBlockKey(locator BlockLocator) string {
 	return strings.Join([]string{strconv.Itoa(locator.EpochIndex), locator.Creator, strconv.Itoa(locator.Index)}, ":")
 }
 
+func previousBlockId(block coreBlocks.Block) string {
+	locator := blockLocatorFromBlock(block)
+	if locator == nil {
+		return ""
+	}
+	locator.Index--
+	return composeBlockKey(*locator)
+}
+
+func previousAnchorBlockId(block anchorBlocks.Block) string {
+	locator := blockLocatorFromAnchorBlock(block)
+	if locator == nil {
+		return ""
+	}
+	locator.Index--
+	return composeBlockKey(*locator)
+}
+
 func blockLocatorFromBlock(block coreBlocks.Block) *BlockLocator {
 	epochIndex := extractEpochIndex(block.Epoch)
 	if epochIndex < 0 {
@@ -164,7 +188,7 @@ func extractEpochIndex(epoch string) int {
 	return idx
 }
 
-func validateAfpForBlock(blockIndex int, prevHash string, afp structures.AggregatedFinalizationProof) bool {
+func validateAfpForBlock(blockIndex int, prevHash string, afp coreStructs.AggregatedFinalizationProof) bool {
 	if blockIndex <= 0 {
 		return true
 	}

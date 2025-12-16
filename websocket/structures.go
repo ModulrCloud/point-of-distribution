@@ -18,8 +18,8 @@ type BlockLocator struct {
 }
 
 type BlockWithAfpRequest struct {
-	Route   string       `json:"route"`
-	Locator BlockLocator `json:"locator"`
+	Route   string `json:"route"`
+	BlockId string `json:"blockID"`
 }
 
 type BlockWithAfpResponse struct {
@@ -28,8 +28,8 @@ type BlockWithAfpResponse struct {
 }
 
 type AnchorBlockWithAfpRequest struct {
-	Route   string       `json:"route"`
-	Locator BlockLocator `json:"locator"`
+	Route   string `json:"route"`
+	BlockId string `json:"blockID"`
 }
 
 type AnchorBlockWithAfpResponse struct {
