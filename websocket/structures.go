@@ -38,15 +38,15 @@ type AnchorBlockWithAfpResponse struct {
 }
 
 type AcceptBlockWithAfpRequest struct {
-	Route string                                  `json:"route"`
-	Block coreBlocks.Block                        `json:"block"`
-	Afp   coreStructs.AggregatedFinalizationProof `json:"afp"`
+	Route string                                   `json:"route"`
+	Block coreBlocks.Block                         `json:"block"`
+	Afp   *coreStructs.AggregatedFinalizationProof `json:"afp"`
 }
 
 type AcceptAnchorBlockWithAfpRequest struct {
-	Route string                                     `json:"route"`
-	Block anchorBlocks.Block                         `json:"block"`
-	Afp   anchorsStructs.AggregatedFinalizationProof `json:"afp"`
+	Route string                                      `json:"route"`
+	Block anchorBlocks.Block                          `json:"block"`
+	Afp   *anchorsStructs.AggregatedFinalizationProof `json:"afp"`
 }
 
 type statusResponse struct {

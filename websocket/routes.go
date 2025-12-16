@@ -39,24 +39,25 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 	if key == "" || stores == nil || stores.CoreBlocksData == nil {
 		return
 	}
+	var resp BlockWithAfpResponse
+	nextBlockId := nextBlockId(key)
+	if nextBlockId != "" {
+		if afpBytes, err := stores.CoreBlocksData.Get([]byte("AFP:"+nextBlockId), nil); err == nil {
+			var afp coreStructs.AggregatedFinalizationProof
+			if err := json.Unmarshal(afpBytes, &afp); err == nil {
+				resp.Afp = &afp
+			}
+		}
+	}
 	if blockBytes, err := stores.CoreBlocksData.Get([]byte(key), nil); err == nil {
 		var block coreBlocks.Block
 		if err := json.Unmarshal(blockBytes, &block); err == nil {
-			resp := BlockWithAfpResponse{Block: &block}
-			if block.Index > 0 {
-				prevKey := previousBlockId(block)
-				if prevKey != "" {
-					if afpBytes, err := stores.CoreBlocksData.Get([]byte("AFP:"+prevKey), nil); err == nil {
-						var afp coreStructs.AggregatedFinalizationProof
-						if err := json.Unmarshal(afpBytes, &afp); err == nil {
-							resp.Afp = &afp
-						}
-					}
-				}
-			}
-			if data, err := json.Marshal(resp); err == nil {
-				connection.WriteMessage(gws.OpcodeText, data)
-			}
+			resp.Block = &block
+		}
+	}
+	if resp.Block != nil {
+		if data, err := json.Marshal(resp); err == nil {
+			connection.WriteMessage(gws.OpcodeText, data)
 		}
 	}
 }
@@ -66,24 +67,25 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 	if key == "" || stores == nil || stores.AnchorsCoreBlocksData == nil {
 		return
 	}
+	var resp AnchorBlockWithAfpResponse
+	nextBlockId := nextBlockId(key)
+	if nextBlockId != "" {
+		if afpBytes, err := stores.AnchorsCoreBlocksData.Get([]byte("AFP:"+nextBlockId), nil); err == nil {
+			var afp anchorsStructs.AggregatedFinalizationProof
+			if err := json.Unmarshal(afpBytes, &afp); err == nil {
+				resp.Afp = &afp
+			}
+		}
+	}
 	if blockBytes, err := stores.AnchorsCoreBlocksData.Get([]byte(key), nil); err == nil {
 		var block anchorBlocks.Block
 		if err := json.Unmarshal(blockBytes, &block); err == nil {
-			resp := AnchorBlockWithAfpResponse{Block: &block}
-			if block.Index > 0 {
-				prevKey := previousAnchorBlockId(block)
-				if prevKey != "" {
-					if afpBytes, err := stores.AnchorsCoreBlocksData.Get([]byte("AFP:"+prevKey), nil); err == nil {
-						var afp anchorsStructs.AggregatedFinalizationProof
-						if err := json.Unmarshal(afpBytes, &afp); err == nil {
-							resp.Afp = &afp
-						}
-					}
-				}
-			}
-			if data, err := json.Marshal(resp); err == nil {
-				connection.WriteMessage(gws.OpcodeText, data)
-			}
+			resp.Block = &block
+		}
+	}
+	if resp.Block != nil {
+		if data, err := json.Marshal(resp); err == nil {
+			connection.WriteMessage(gws.OpcodeText, data)
 		}
 	}
 }
@@ -97,13 +99,20 @@ func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Con
 		return
 	}
 	withBlockLock(blockKey, locks, func() {
-		if !req.Block.VerifySignature() || !validateAfpForBlock(req.Block.Index, req.Block.PrevHash, req.Afp) {
+		if !req.Block.VerifySignature() {
 			return
+		}
+		if req.Block.Index > 0 {
+			if req.Afp == nil || !validateAfpForBlock(req.Block.Index, req.Block.PrevHash, *req.Afp) {
+				return
+			}
 		}
 		if blockBytes, err := json.Marshal(req.Block); err == nil {
 			if err := stores.CoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
-				if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
-					_ = stores.CoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
+				if req.Afp != nil {
+					if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
+						_ = stores.CoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
+					}
 				}
 				acknowledge(connection)
 			}
@@ -120,13 +129,20 @@ func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connect
 		return
 	}
 	withBlockLock(blockKey, locks, func() {
-		if !req.Block.VerifySignature() || !validateAnchorAfpForBlock(req.Block.Index, req.Block.PrevHash, req.Afp) {
+		if !req.Block.VerifySignature() {
 			return
+		}
+		if req.Block.Index > 0 {
+			if req.Afp == nil || !validateAnchorAfpForBlock(req.Block.Index, req.Block.PrevHash, *req.Afp) {
+				return
+			}
 		}
 		if blockBytes, err := json.Marshal(req.Block); err == nil {
 			if err := stores.AnchorsCoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
-				if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
-					_ = stores.AnchorsCoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
+				if req.Afp != nil {
+					if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
+						_ = stores.AnchorsCoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
+					}
 				}
 				acknowledge(connection)
 			}
@@ -134,29 +150,24 @@ func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connect
 	})
 }
 
+func nextBlockId(blockId string) string {
+	parts := strings.Split(blockId, ":")
+	if len(parts) != 3 {
+		return ""
+	}
+	idx, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return ""
+	}
+	parts[2] = strconv.Itoa(idx + 1)
+	return strings.Join(parts, ":")
+}
+
 func composeBlockKey(locator BlockLocator) string {
 	if locator.Creator == "" || locator.Index < 0 {
 		return ""
 	}
 	return strings.Join([]string{strconv.Itoa(locator.EpochIndex), locator.Creator, strconv.Itoa(locator.Index)}, ":")
-}
-
-func previousBlockId(block coreBlocks.Block) string {
-	locator := blockLocatorFromBlock(block)
-	if locator == nil {
-		return ""
-	}
-	locator.Index--
-	return composeBlockKey(*locator)
-}
-
-func previousAnchorBlockId(block anchorBlocks.Block) string {
-	locator := blockLocatorFromAnchorBlock(block)
-	if locator == nil {
-		return ""
-	}
-	locator.Index--
-	return composeBlockKey(*locator)
 }
 
 func blockLocatorFromBlock(block coreBlocks.Block) *BlockLocator {
