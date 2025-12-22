@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -53,6 +54,17 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 	case "accept_block_with_afp":
 		var req AcceptBlockWithAfpRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			blockKey := ""
+			if locator := blockLocatorFromBlock(req.Block); locator != nil {
+				blockKey = composeBlockKey(*locator)
+			}
+			afpBlockId, afpBlockHash := "", ""
+			if req.Afp != nil {
+				afpBlockId, afpBlockHash = req.Afp.BlockId, req.Afp.BlockHash
+			}
+			log.Printf("[ws] accept_block_with_afp blockKey=%s epoch=%s creator=%s index=%d prevHash=%s hasAfp=%t afpBlockId=%s afpBlockHash=%s",
+				blockKey, req.Block.Epoch, req.Block.Creator, req.Block.Index, req.Block.PrevHash, req.Afp != nil, afpBlockId, afpBlockHash,
+			)
 			handleAcceptBlockWithAfp(req, connection, h.stores, h.coreLocks)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_block_with_afp_request"}`))
@@ -60,6 +72,17 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 	case "accept_anchor_block_with_afp":
 		var req AcceptAnchorBlockWithAfpRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			blockKey := ""
+			if locator := blockLocatorFromAnchorBlock(req.Block); locator != nil {
+				blockKey = composeBlockKey(*locator)
+			}
+			afpBlockId, afpBlockHash := "", ""
+			if req.Afp != nil {
+				afpBlockId, afpBlockHash = req.Afp.BlockId, req.Afp.BlockHash
+			}
+			log.Printf("[ws] accept_anchor_block_with_afp blockKey=%s epoch=%s creator=%s index=%d prevHash=%s hasAfp=%t afpBlockId=%s afpBlockHash=%s",
+				blockKey, req.Block.Epoch, req.Block.Creator, req.Block.Index, req.Block.PrevHash, req.Afp != nil, afpBlockId, afpBlockHash,
+			)
 			handleAcceptAnchorBlockWithAfp(req, connection, h.stores, h.anchorLocks)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_anchor_block_with_afp_request"}`))
@@ -67,6 +90,11 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 	case "accept_aggregated_leader_finalization_proof":
 		var req AggregatedLeaderFinalizationProofStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			vsIndex, vsHash := req.Proof.VotingStat.Index, req.Proof.VotingStat.Hash
+			afpBlockId, afpBlockHash := req.Proof.VotingStat.Afp.BlockId, req.Proof.VotingStat.Afp.BlockHash
+			log.Printf("[ws] accept_aggregated_leader_finalization_proof epochIndex=%d leader=%s votingStatIndex=%d votingStatHash=%s afpBlockId=%s afpBlockHash=%s",
+				req.Proof.EpochIndex, req.Proof.Leader, vsIndex, vsHash, afpBlockId, afpBlockHash,
+			)
 			handleAcceptAggregatedLeaderFinalizationProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_leader_finalization_proof_request"}`))
