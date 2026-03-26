@@ -106,6 +106,34 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_leader_finalization_proof_request"}`))
 		}
+	case "accept_height_attestation":
+		var req HeightAttestationStoreRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleAcceptHeightAttestation(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_height_attestation_request"}`))
+		}
+	case "get_height_attestation_from_pod":
+		var req HeightAttestationGetRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleGetHeightAttestation(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_height_attestation_request"}`))
+		}
+	case "accept_quorum_rotation_attestation":
+		var req QuorumRotationAttestationStoreRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleAcceptQuorumRotationAttestation(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_quorum_rotation_attestation_request"}`))
+		}
+	case "get_quorum_rotation_attestation_from_pod":
+		var req QuorumRotationAttestationGetRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleGetQuorumRotationAttestation(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_quorum_rotation_attestation_request"}`))
+		}
 	default:
 		connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"unknown_type"}`))
 	}

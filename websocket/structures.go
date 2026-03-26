@@ -62,3 +62,31 @@ type AcceptAnchorBlockWithAfpRequest struct {
 type statusResponse struct {
 	Status string `json:"status"`
 }
+
+type HeightAttestationStoreRequest struct {
+	Route string                            `json:"route"`
+	Proof external_structs.HeightAttestation `json:"proof"`
+}
+
+type HeightAttestationGetRequest struct {
+	Route          string `json:"route"`
+	AbsoluteHeight int    `json:"absoluteHeight"`
+}
+
+type HeightAttestationGetResponse struct {
+	Proof *external_structs.HeightAttestation `json:"proof"`
+}
+
+type QuorumRotationAttestationStoreRequest struct {
+	Route       string                                      `json:"route"`
+	Attestation external_structs.QuorumRotationAttestation `json:"attestation"`
+}
+
+type QuorumRotationAttestationGetRequest struct {
+	Route   string `json:"route"`
+	EpochId int    `json:"epochId"`
+}
+
+type QuorumRotationAttestationGetResponse struct {
+	Attestation *external_structs.QuorumRotationAttestation `json:"attestation"`
+}

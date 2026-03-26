@@ -327,6 +327,76 @@ func (lm *lockManager) releaseSlot() {
 	<-lm.semaphore
 }
 
+func handleAcceptHeightAttestation(req HeightAttestationStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("HEIGHT_ATTESTATION:%d", req.Proof.AbsoluteHeight)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err == nil {
+			acknowledge(connection)
+		}
+	}
+}
+
+func handleGetHeightAttestation(req HeightAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("HEIGHT_ATTESTATION:%d", req.AbsoluteHeight)
+
+	var resp HeightAttestationGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.HeightAttestation
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
+func handleAcceptQuorumRotationAttestation(req QuorumRotationAttestationStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("QUORUM_ROTATION:%d", req.Attestation.EpochId)
+
+	if attestBytes, err := json.Marshal(req.Attestation); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), attestBytes, nil); err == nil {
+			acknowledge(connection)
+		}
+	}
+}
+
+func handleGetQuorumRotationAttestation(req QuorumRotationAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("QUORUM_ROTATION:%d", req.EpochId)
+
+	var resp QuorumRotationAttestationGetResponse
+
+	if attestBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var attestation external_structs.QuorumRotationAttestation
+		if err := json.Unmarshal(attestBytes, &attestation); err == nil {
+			resp.Attestation = &attestation
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
 func acknowledge(connection *gws.Conn) {
 	if connection == nil {
 		return
