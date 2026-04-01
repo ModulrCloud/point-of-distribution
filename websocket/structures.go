@@ -18,8 +18,9 @@ type BlockWithAfpRequest struct {
 }
 
 type BlockWithAfpResponse struct {
-	Block *external_structs.CoreBlock                   `json:"block"`
-	Afp   *external_structs.AggregatedFinalizationProof `json:"afp"`
+	Block             *external_structs.CoreBlock                   `json:"block"`
+	Afp               *external_structs.AggregatedFinalizationProof `json:"afp"`
+	HeightAttestation *external_structs.HeightAttestation           `json:"heightAttestation,omitempty"`
 }
 
 type AnchorBlockWithAfpRequest struct {
@@ -64,7 +65,7 @@ type statusResponse struct {
 }
 
 type HeightAttestationStoreRequest struct {
-	Route string                            `json:"route"`
+	Route string                             `json:"route"`
 	Proof external_structs.HeightAttestation `json:"proof"`
 }
 
@@ -78,7 +79,7 @@ type HeightAttestationGetResponse struct {
 }
 
 type QuorumRotationAttestationStoreRequest struct {
-	Route       string                                      `json:"route"`
+	Route       string                                     `json:"route"`
 	Attestation external_structs.QuorumRotationAttestation `json:"attestation"`
 }
 

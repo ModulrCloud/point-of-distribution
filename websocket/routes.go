@@ -52,6 +52,17 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 			resp.Block = &block
 		}
 	}
+	if stores.LastMileData != nil {
+		if heightBytes, err := stores.LastMileData.Get([]byte("BLOCK_TO_HEIGHT:"+key), nil); err == nil {
+			heightKey := fmt.Sprintf("HEIGHT_ATTESTATION:%s", string(heightBytes))
+			if proofBytes, err := stores.LastMileData.Get([]byte(heightKey), nil); err == nil {
+				var proof external_structs.HeightAttestation
+				if json.Unmarshal(proofBytes, &proof) == nil {
+					resp.HeightAttestation = &proof
+				}
+			}
+		}
+	}
 	if resp.Block != nil {
 		if data, err := json.Marshal(resp); err == nil {
 			connection.WriteMessage(gws.OpcodeText, data)
@@ -336,6 +347,10 @@ func handleAcceptHeightAttestation(req HeightAttestationStoreRequest, connection
 
 	if proofBytes, err := json.Marshal(req.Proof); err == nil {
 		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err == nil {
+			if req.Proof.BlockId != "" {
+				reverseKey := "BLOCK_TO_HEIGHT:" + req.Proof.BlockId
+				_ = stores.LastMileData.Put([]byte(reverseKey), []byte(strconv.Itoa(req.Proof.AbsoluteHeight)), nil)
+			}
 			acknowledge(connection)
 		}
 	}
