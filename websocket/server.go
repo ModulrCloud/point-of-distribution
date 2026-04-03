@@ -134,6 +134,13 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_quorum_rotation_attestation_request"}`))
 		}
+	case "get_block_by_height":
+		var req BlockByHeightRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleGetBlockByHeight(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_block_by_height_request"}`))
+		}
 	default:
 		connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"unknown_type"}`))
 	}

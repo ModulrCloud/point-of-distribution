@@ -412,6 +412,46 @@ func handleGetQuorumRotationAttestation(req QuorumRotationAttestationGetRequest,
 	}
 }
 
+func handleGetBlockByHeight(req BlockByHeightRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil || stores.CoreBlocksData == nil {
+		return
+	}
+
+	heightKey := fmt.Sprintf("HEIGHT_ATTESTATION:%d", req.AbsoluteHeight)
+
+	var resp BlockByHeightResponse
+
+	proofBytes, err := stores.LastMileData.Get([]byte(heightKey), nil)
+	if err != nil {
+		if data, err := json.Marshal(resp); err == nil {
+			connection.WriteMessage(gws.OpcodeText, data)
+		}
+		return
+	}
+
+	var proof external_structs.HeightAttestation
+	if json.Unmarshal(proofBytes, &proof) != nil {
+		if data, err := json.Marshal(resp); err == nil {
+			connection.WriteMessage(gws.OpcodeText, data)
+		}
+		return
+	}
+	resp.HeightAttestation = &proof
+
+	if proof.BlockId != "" {
+		if blockBytes, err := stores.CoreBlocksData.Get([]byte(proof.BlockId), nil); err == nil {
+			var block external_structs.CoreBlock
+			if json.Unmarshal(blockBytes, &block) == nil {
+				resp.Block = &block
+			}
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
 func acknowledge(connection *gws.Conn) {
 	if connection == nil {
 		return

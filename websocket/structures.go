@@ -91,3 +91,13 @@ type QuorumRotationAttestationGetRequest struct {
 type QuorumRotationAttestationGetResponse struct {
 	Attestation *external_structs.QuorumRotationAttestation `json:"attestation"`
 }
+
+type BlockByHeightRequest struct {
+	Route          string `json:"route"`
+	AbsoluteHeight int    `json:"absoluteHeight"`
+}
+
+type BlockByHeightResponse struct {
+	Block             *external_structs.CoreBlock         `json:"block"`
+	HeightAttestation *external_structs.HeightAttestation `json:"heightAttestation"`
+}
