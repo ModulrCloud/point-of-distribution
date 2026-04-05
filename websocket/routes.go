@@ -385,10 +385,12 @@ func handleAcceptEpochDataAttestation(req EpochDataAttestationStoreRequest, conn
 	key := fmt.Sprintf("EPOCH_DATA_ATTESTATION:%d", req.Attestation.EpochId)
 
 	if attestBytes, err := json.Marshal(req.Attestation); err == nil {
-		if err := stores.LastMileData.Put([]byte(key), attestBytes, nil); err == nil {
-			acknowledge(connection)
+		if err := stores.LastMileData.Put([]byte(key), attestBytes, nil); err != nil {
+			return
 		}
 	}
+
+	acknowledge(connection)
 }
 
 func handleGetEpochDataAttestation(req EpochDataAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
@@ -404,6 +406,41 @@ func handleGetEpochDataAttestation(req EpochDataAttestationGetRequest, connectio
 		var attestation external_structs.EpochDataAttestation
 		if err := json.Unmarshal(attestBytes, &attestation); err == nil {
 			resp.Attestation = &attestation
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
+func handleAcceptAnchorEpochAck(req AnchorEpochAckStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("ANCHOR_EPOCH_ACK:%d", req.Proof.EpochId)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err == nil {
+			acknowledge(connection)
+		}
+	}
+}
+
+func handleGetAnchorEpochAck(req AnchorEpochAckGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("ANCHOR_EPOCH_ACK:%d", req.EpochId)
+
+	var resp AnchorEpochAckGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.AnchorEpochAckProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
 		}
 	}
 

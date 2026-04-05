@@ -101,3 +101,17 @@ type BlockByHeightResponse struct {
 	Block             *external_structs.CoreBlock         `json:"block"`
 	HeightAttestation *external_structs.HeightAttestation `json:"heightAttestation"`
 }
+
+type AnchorEpochAckStoreRequest struct {
+	Route string                               `json:"route"`
+	Proof external_structs.AnchorEpochAckProof `json:"proof"`
+}
+
+type AnchorEpochAckGetRequest struct {
+	Route   string `json:"route"`
+	EpochId int    `json:"epochId"`
+}
+
+type AnchorEpochAckGetResponse struct {
+	Proof *external_structs.AnchorEpochAckProof `json:"proof"`
+}

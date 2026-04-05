@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/modulrcloud/point-of-distribution/config"
+	podconfig "github.com/modulrcloud/point-of-distribution/config"
 	"github.com/modulrcloud/point-of-distribution/databases"
 
 	"github.com/lxzan/gws"
@@ -127,6 +127,20 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_epoch_data_attestation_request"}`))
 		}
+	case "accept_anchor_epoch_ack_proof":
+		var req AnchorEpochAckStoreRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleAcceptAnchorEpochAck(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_anchor_epoch_ack_request"}`))
+		}
+	case "get_anchor_epoch_ack_proof":
+		var req AnchorEpochAckGetRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleGetAnchorEpochAck(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_anchor_epoch_ack_request"}`))
+		}
 	case "get_epoch_data_attestation_from_pod":
 		var req EpochDataAttestationGetRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
@@ -146,7 +160,7 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 	}
 }
 
-func CreateWebsocketServer(cfg config.Config, stores *databases.Stores) error {
+func CreateWebsocketServer(cfg podconfig.Config, stores *databases.Stores) error {
 	coreLocks := newLockManager(cfg.MaxConcurrentLocks)
 	anchorLocks := newLockManager(cfg.MaxConcurrentLocks)
 	upgrader := gws.NewUpgrader(&handler{stores: stores, coreLocks: coreLocks, anchorLocks: anchorLocks}, &gws.ServerOption{
