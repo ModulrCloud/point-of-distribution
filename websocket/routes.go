@@ -377,12 +377,12 @@ func handleGetHeightAttestation(req HeightAttestationGetRequest, connection *gws
 	}
 }
 
-func handleAcceptQuorumRotationAttestation(req QuorumRotationAttestationStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptEpochDataAttestation(req EpochDataAttestationStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
 
-	key := fmt.Sprintf("QUORUM_ROTATION:%d", req.Attestation.EpochId)
+	key := fmt.Sprintf("EPOCH_DATA_ATTESTATION:%d", req.Attestation.EpochId)
 
 	if attestBytes, err := json.Marshal(req.Attestation); err == nil {
 		if err := stores.LastMileData.Put([]byte(key), attestBytes, nil); err == nil {
@@ -391,17 +391,17 @@ func handleAcceptQuorumRotationAttestation(req QuorumRotationAttestationStoreReq
 	}
 }
 
-func handleGetQuorumRotationAttestation(req QuorumRotationAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleGetEpochDataAttestation(req EpochDataAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
 
-	key := fmt.Sprintf("QUORUM_ROTATION:%d", req.EpochId)
+	key := fmt.Sprintf("EPOCH_DATA_ATTESTATION:%d", req.EpochId)
 
-	var resp QuorumRotationAttestationGetResponse
+	var resp EpochDataAttestationGetResponse
 
 	if attestBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
-		var attestation external_structs.QuorumRotationAttestation
+		var attestation external_structs.EpochDataAttestation
 		if err := json.Unmarshal(attestBytes, &attestation); err == nil {
 			resp.Attestation = &attestation
 		}

@@ -78,18 +78,18 @@ type HeightAttestationGetResponse struct {
 	Proof *external_structs.HeightAttestation `json:"proof"`
 }
 
-type QuorumRotationAttestationStoreRequest struct {
-	Route       string                                     `json:"route"`
-	Attestation external_structs.QuorumRotationAttestation `json:"attestation"`
+type EpochDataAttestationStoreRequest struct {
+	Route       string                                `json:"route"`
+	Attestation external_structs.EpochDataAttestation `json:"attestation"`
 }
 
-type QuorumRotationAttestationGetRequest struct {
+type EpochDataAttestationGetRequest struct {
 	Route   string `json:"route"`
 	EpochId int    `json:"epochId"`
 }
 
-type QuorumRotationAttestationGetResponse struct {
-	Attestation *external_structs.QuorumRotationAttestation `json:"attestation"`
+type EpochDataAttestationGetResponse struct {
+	Attestation *external_structs.EpochDataAttestation `json:"attestation"`
 }
 
 type BlockByHeightRequest struct {

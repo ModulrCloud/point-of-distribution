@@ -169,17 +169,24 @@ func (ha HeightAttestation) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aux)
 }
 
-type QuorumRotationAttestation struct {
+type NextEpochData struct {
+	NextEpochHash               string              `json:"nextEpochHash"`
+	NextEpochValidatorsRegistry []string            `json:"nextEpochValidatorsRegistry"`
+	NextEpochQuorum             []string            `json:"nextEpochQuorum"`
+	NextEpochLeadersSequence    []string            `json:"nextEpochLeadersSequence"`
+	DelayedTransactions         []map[string]string `json:"delayedTransactions"`
+}
+
+type EpochDataAttestation struct {
 	EpochId       int               `json:"epochId"`
 	NextEpochId   int               `json:"nextEpochId"`
-	NextEpochHash string            `json:"nextEpochHash"`
-	NextQuorum    []string          `json:"nextQuorum"`
+	EpochData     NextEpochData     `json:"epochData"`
+	EpochDataHash string            `json:"epochDataHash"`
 	Proofs        map[string]string `json:"proofs"`
 }
 
-func (qra *QuorumRotationAttestation) UnmarshalJSON(data []byte) error {
-
-	type alias QuorumRotationAttestation
+func (eda *EpochDataAttestation) UnmarshalJSON(data []byte) error {
+	type alias EpochDataAttestation
 
 	var aux alias
 
@@ -191,16 +198,15 @@ func (qra *QuorumRotationAttestation) UnmarshalJSON(data []byte) error {
 		aux.Proofs = make(map[string]string)
 	}
 
-	*qra = QuorumRotationAttestation(aux)
+	*eda = EpochDataAttestation(aux)
 
 	return nil
 }
 
-func (qra QuorumRotationAttestation) MarshalJSON() ([]byte, error) {
+func (eda EpochDataAttestation) MarshalJSON() ([]byte, error) {
+	type alias EpochDataAttestation
 
-	type alias QuorumRotationAttestation
-
-	aux := alias(qra)
+	aux := alias(eda)
 
 	if aux.Proofs == nil {
 		aux.Proofs = make(map[string]string)

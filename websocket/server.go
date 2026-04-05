@@ -120,19 +120,19 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_height_attestation_request"}`))
 		}
-	case "accept_quorum_rotation_attestation":
-		var req QuorumRotationAttestationStoreRequest
+	case "accept_epoch_data_attestation":
+		var req EpochDataAttestationStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleAcceptQuorumRotationAttestation(req, connection, h.stores)
+			handleAcceptEpochDataAttestation(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_quorum_rotation_attestation_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_epoch_data_attestation_request"}`))
 		}
-	case "get_quorum_rotation_attestation_from_pod":
-		var req QuorumRotationAttestationGetRequest
+	case "get_epoch_data_attestation_from_pod":
+		var req EpochDataAttestationGetRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleGetQuorumRotationAttestation(req, connection, h.stores)
+			handleGetEpochDataAttestation(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_quorum_rotation_attestation_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_epoch_data_attestation_request"}`))
 		}
 	case "get_block_by_height":
 		var req BlockByHeightRequest
