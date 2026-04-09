@@ -107,46 +107,46 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_leader_finalization_proof_request"}`))
 		}
 	case "accept_aggregated_height_proof":
-		var req HeightAttestationStoreRequest
+		var req AggregatedHeightProofStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleAcceptHeightAttestation(req, connection, h.stores)
+			handleAcceptAggregatedHeightProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_height_proof_request"}`))
 		}
 	case "get_aggregated_height_proof_from_pod":
-		var req HeightAttestationGetRequest
+		var req AggregatedHeightProofGetRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleGetHeightAttestation(req, connection, h.stores)
+			handleGetAggregatedHeightProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_height_proof_request"}`))
 		}
 	case "accept_aggregated_epoch_rotation_proof":
-		var req EpochDataAttestationStoreRequest
+		var req AggregatedEpochRotationProofStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleAcceptEpochDataAttestation(req, connection, h.stores)
+			handleAcceptAggregatedEpochRotationProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_epoch_rotation_proof_request"}`))
 		}
 	case "accept_aggregated_anchor_epoch_ack_proof":
-		var req AnchorEpochAckStoreRequest
+		var req AggregatedAnchorEpochAckProofStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleAcceptAnchorEpochAck(req, connection, h.stores)
+			handleAcceptAggregatedAnchorEpochAckProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_anchor_epoch_ack_proof_request"}`))
 		}
 	case "get_anchor_epoch_ack_proof":
-		var req AnchorEpochAckGetRequest
+		var req AggregatedAnchorEpochAckProofGetRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleGetAnchorEpochAck(req, connection, h.stores)
+			handleGetAggregatedAnchorEpochAckProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_anchor_epoch_ack_request"}`))
 		}
-	case "get_epoch_data_attestation_from_pod":
-		var req EpochDataAttestationGetRequest
+	case "get_aggregated_epoch_rotation_proof_from_pod":
+		var req AggregatedEpochRotationProofGetRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
-			handleGetEpochDataAttestation(req, connection, h.stores)
+			handleGetAggregatedEpochRotationProof(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_epoch_data_attestation_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_epoch_rotation_proof_request"}`))
 		}
 	case "get_block_by_height":
 		var req BlockByHeightRequest

@@ -20,7 +20,7 @@ type BlockWithAfpRequest struct {
 type BlockWithAfpResponse struct {
 	Block                 *external_structs.CoreBlock                   `json:"block"`
 	Afp                   *external_structs.AggregatedFinalizationProof `json:"afp"`
-	AggregatedHeightProof *external_structs.AggregatedHeightProof       `json:"heightAttestation,omitempty"`
+	AggregatedHeightProof *external_structs.AggregatedHeightProof       `json:"aggregatedHeightProof,omitempty"`
 }
 
 type AnchorBlockWithAfpRequest struct {
@@ -64,32 +64,32 @@ type statusResponse struct {
 	Status string `json:"status"`
 }
 
-type HeightAttestationStoreRequest struct {
+type AggregatedHeightProofStoreRequest struct {
 	Route string                                 `json:"route"`
 	Proof external_structs.AggregatedHeightProof `json:"proof"`
 }
 
-type HeightAttestationGetRequest struct {
+type AggregatedHeightProofGetRequest struct {
 	Route          string `json:"route"`
 	AbsoluteHeight int    `json:"absoluteHeight"`
 }
 
-type HeightAttestationGetResponse struct {
+type AggregatedHeightProofGetResponse struct {
 	Proof *external_structs.AggregatedHeightProof `json:"proof"`
 }
 
-type EpochDataAttestationStoreRequest struct {
+type AggregatedEpochRotationProofStoreRequest struct {
 	Route string                                        `json:"route"`
-	Proof external_structs.AggregatedEpochRotationProof `json:"attestation"`
+	Proof external_structs.AggregatedEpochRotationProof `json:"proof"`
 }
 
-type EpochDataAttestationGetRequest struct {
+type AggregatedEpochRotationProofGetRequest struct {
 	Route   string `json:"route"`
 	EpochId int    `json:"epochId"`
 }
 
-type EpochDataAttestationGetResponse struct {
-	Proof *external_structs.AggregatedEpochRotationProof `json:"attestation"`
+type AggregatedEpochRotationProofGetResponse struct {
+	Proof *external_structs.AggregatedEpochRotationProof `json:"proof"`
 }
 
 type BlockByHeightRequest struct {
@@ -99,19 +99,19 @@ type BlockByHeightRequest struct {
 
 type BlockByHeightResponse struct {
 	Block                 *external_structs.CoreBlock             `json:"block"`
-	AggregatedHeightProof *external_structs.AggregatedHeightProof `json:"heightAttestation"`
+	AggregatedHeightProof *external_structs.AggregatedHeightProof `json:"aggregatedHeightProof"`
 }
 
-type AnchorEpochAckStoreRequest struct {
+type AggregatedAnchorEpochAckProofStoreRequest struct {
 	Route string                                         `json:"route"`
 	Proof external_structs.AggregatedAnchorEpochAckProof `json:"proof"`
 }
 
-type AnchorEpochAckGetRequest struct {
+type AggregatedAnchorEpochAckProofGetRequest struct {
 	Route   string `json:"route"`
 	EpochId int    `json:"epochId"`
 }
 
-type AnchorEpochAckGetResponse struct {
+type AggregatedAnchorEpochAckProofGetResponse struct {
 	Proof *external_structs.AggregatedAnchorEpochAckProof `json:"proof"`
 }

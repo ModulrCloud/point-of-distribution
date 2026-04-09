@@ -338,7 +338,7 @@ func (lm *lockManager) releaseSlot() {
 	<-lm.semaphore
 }
 
-func handleAcceptHeightAttestation(req HeightAttestationStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptAggregatedHeightProof(req AggregatedHeightProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
@@ -356,14 +356,14 @@ func handleAcceptHeightAttestation(req HeightAttestationStoreRequest, connection
 	}
 }
 
-func handleGetHeightAttestation(req HeightAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleGetAggregatedHeightProof(req AggregatedHeightProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
 
 	key := fmt.Sprintf("HEIGHT_PROOF:%d", req.AbsoluteHeight)
 
-	var resp HeightAttestationGetResponse
+	var resp AggregatedHeightProofGetResponse
 
 	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
 		var proof external_structs.AggregatedHeightProof
@@ -377,7 +377,7 @@ func handleGetHeightAttestation(req HeightAttestationGetRequest, connection *gws
 	}
 }
 
-func handleAcceptEpochDataAttestation(req EpochDataAttestationStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptAggregatedEpochRotationProof(req AggregatedEpochRotationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
@@ -393,14 +393,14 @@ func handleAcceptEpochDataAttestation(req EpochDataAttestationStoreRequest, conn
 	acknowledge(connection)
 }
 
-func handleGetEpochDataAttestation(req EpochDataAttestationGetRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleGetAggregatedEpochRotationProof(req AggregatedEpochRotationProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
 
 	key := fmt.Sprintf("EPOCH_ROTATION_PROOF:%d", req.EpochId)
 
-	var resp EpochDataAttestationGetResponse
+	var resp AggregatedEpochRotationProofGetResponse
 
 	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
 		var proof external_structs.AggregatedEpochRotationProof
@@ -414,7 +414,7 @@ func handleGetEpochDataAttestation(req EpochDataAttestationGetRequest, connectio
 	}
 }
 
-func handleAcceptAnchorEpochAck(req AnchorEpochAckStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleAcceptAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
@@ -428,14 +428,14 @@ func handleAcceptAnchorEpochAck(req AnchorEpochAckStoreRequest, connection *gws.
 	}
 }
 
-func handleGetAnchorEpochAck(req AnchorEpochAckGetRequest, connection *gws.Conn, stores *databases.Stores) {
+func handleGetAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return
 	}
 
 	key := fmt.Sprintf("ANCHOR_EPOCH_ACK_PROOF:%d", req.EpochId)
 
-	var resp AnchorEpochAckGetResponse
+	var resp AggregatedAnchorEpochAckProofGetResponse
 
 	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
 		var proof external_structs.AggregatedAnchorEpochAckProof
