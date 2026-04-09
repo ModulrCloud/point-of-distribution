@@ -106,33 +106,33 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_leader_finalization_proof_request"}`))
 		}
-	case "accept_height_attestation":
+	case "accept_aggregated_height_proof":
 		var req HeightAttestationStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
 			handleAcceptHeightAttestation(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_height_attestation_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_height_proof_request"}`))
 		}
-	case "get_height_attestation_from_pod":
+	case "get_aggregated_height_proof_from_pod":
 		var req HeightAttestationGetRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
 			handleGetHeightAttestation(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_height_attestation_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_height_proof_request"}`))
 		}
-	case "accept_epoch_data_attestation":
+	case "accept_aggregated_epoch_rotation_proof":
 		var req EpochDataAttestationStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
 			handleAcceptEpochDataAttestation(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_epoch_data_attestation_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_epoch_rotation_proof_request"}`))
 		}
-	case "accept_anchor_epoch_ack_proof":
+	case "accept_aggregated_anchor_epoch_ack_proof":
 		var req AnchorEpochAckStoreRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
 			handleAcceptAnchorEpochAck(req, connection, h.stores)
 		} else {
-			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_anchor_epoch_ack_request"}`))
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_anchor_epoch_ack_proof_request"}`))
 		}
 	case "get_anchor_epoch_ack_proof":
 		var req AnchorEpochAckGetRequest

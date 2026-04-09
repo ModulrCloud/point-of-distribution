@@ -18,9 +18,9 @@ type BlockWithAfpRequest struct {
 }
 
 type BlockWithAfpResponse struct {
-	Block             *external_structs.CoreBlock                   `json:"block"`
-	Afp               *external_structs.AggregatedFinalizationProof `json:"afp"`
-	HeightAttestation *external_structs.HeightAttestation           `json:"heightAttestation,omitempty"`
+	Block                 *external_structs.CoreBlock                   `json:"block"`
+	Afp                   *external_structs.AggregatedFinalizationProof `json:"afp"`
+	AggregatedHeightProof *external_structs.AggregatedHeightProof       `json:"heightAttestation,omitempty"`
 }
 
 type AnchorBlockWithAfpRequest struct {
@@ -65,8 +65,8 @@ type statusResponse struct {
 }
 
 type HeightAttestationStoreRequest struct {
-	Route string                             `json:"route"`
-	Proof external_structs.HeightAttestation `json:"proof"`
+	Route string                                 `json:"route"`
+	Proof external_structs.AggregatedHeightProof `json:"proof"`
 }
 
 type HeightAttestationGetRequest struct {
@@ -75,12 +75,12 @@ type HeightAttestationGetRequest struct {
 }
 
 type HeightAttestationGetResponse struct {
-	Proof *external_structs.HeightAttestation `json:"proof"`
+	Proof *external_structs.AggregatedHeightProof `json:"proof"`
 }
 
 type EpochDataAttestationStoreRequest struct {
-	Route       string                                `json:"route"`
-	Attestation external_structs.EpochDataAttestation `json:"attestation"`
+	Route string                                        `json:"route"`
+	Proof external_structs.AggregatedEpochRotationProof `json:"attestation"`
 }
 
 type EpochDataAttestationGetRequest struct {
@@ -89,7 +89,7 @@ type EpochDataAttestationGetRequest struct {
 }
 
 type EpochDataAttestationGetResponse struct {
-	Attestation *external_structs.EpochDataAttestation `json:"attestation"`
+	Proof *external_structs.AggregatedEpochRotationProof `json:"attestation"`
 }
 
 type BlockByHeightRequest struct {
@@ -98,13 +98,13 @@ type BlockByHeightRequest struct {
 }
 
 type BlockByHeightResponse struct {
-	Block             *external_structs.CoreBlock         `json:"block"`
-	HeightAttestation *external_structs.HeightAttestation `json:"heightAttestation"`
+	Block                 *external_structs.CoreBlock             `json:"block"`
+	AggregatedHeightProof *external_structs.AggregatedHeightProof `json:"heightAttestation"`
 }
 
 type AnchorEpochAckStoreRequest struct {
-	Route string                               `json:"route"`
-	Proof external_structs.AnchorEpochAckProof `json:"proof"`
+	Route string                                         `json:"route"`
+	Proof external_structs.AggregatedAnchorEpochAckProof `json:"proof"`
 }
 
 type AnchorEpochAckGetRequest struct {
@@ -113,5 +113,5 @@ type AnchorEpochAckGetRequest struct {
 }
 
 type AnchorEpochAckGetResponse struct {
-	Proof *external_structs.AnchorEpochAckProof `json:"proof"`
+	Proof *external_structs.AggregatedAnchorEpochAckProof `json:"proof"`
 }

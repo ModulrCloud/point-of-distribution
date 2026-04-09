@@ -128,7 +128,7 @@ func (alfp AggregatedLeaderFinalizationProof) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aux)
 }
 
-type HeightAttestation struct {
+type AggregatedHeightProof struct {
 	AbsoluteHeight int               `json:"absoluteHeight"`
 	BlockId        string            `json:"blockId"`
 	BlockHash      string            `json:"blockHash"`
@@ -137,9 +137,9 @@ type HeightAttestation struct {
 	Proofs         map[string]string `json:"proofs"`
 }
 
-func (ha *HeightAttestation) UnmarshalJSON(data []byte) error {
+func (ha *AggregatedHeightProof) UnmarshalJSON(data []byte) error {
 
-	type alias HeightAttestation
+	type alias AggregatedHeightProof
 
 	var aux alias
 
@@ -151,14 +151,14 @@ func (ha *HeightAttestation) UnmarshalJSON(data []byte) error {
 		aux.Proofs = make(map[string]string)
 	}
 
-	*ha = HeightAttestation(aux)
+	*ha = AggregatedHeightProof(aux)
 
 	return nil
 }
 
-func (ha HeightAttestation) MarshalJSON() ([]byte, error) {
+func (ha AggregatedHeightProof) MarshalJSON() ([]byte, error) {
 
-	type alias HeightAttestation
+	type alias AggregatedHeightProof
 
 	aux := alias(ha)
 
@@ -177,15 +177,15 @@ type NextEpochData struct {
 	DelayedTransactions         []map[string]string `json:"delayedTransactions"`
 }
 
-type AnchorEpochAckProof struct {
+type AggregatedAnchorEpochAckProof struct {
 	EpochId       int               `json:"epochId"`
 	NextEpochId   int               `json:"nextEpochId"`
 	EpochDataHash string            `json:"epochDataHash"`
 	Proofs        map[string]string `json:"proofs"`
 }
 
-func (a *AnchorEpochAckProof) UnmarshalJSON(data []byte) error {
-	type alias AnchorEpochAckProof
+func (a *AggregatedAnchorEpochAckProof) UnmarshalJSON(data []byte) error {
+	type alias AggregatedAnchorEpochAckProof
 
 	var aux alias
 
@@ -197,13 +197,13 @@ func (a *AnchorEpochAckProof) UnmarshalJSON(data []byte) error {
 		aux.Proofs = make(map[string]string)
 	}
 
-	*a = AnchorEpochAckProof(aux)
+	*a = AggregatedAnchorEpochAckProof(aux)
 
 	return nil
 }
 
-func (a AnchorEpochAckProof) MarshalJSON() ([]byte, error) {
-	type alias AnchorEpochAckProof
+func (a AggregatedAnchorEpochAckProof) MarshalJSON() ([]byte, error) {
+	type alias AggregatedAnchorEpochAckProof
 
 	aux := alias(a)
 
@@ -214,7 +214,7 @@ func (a AnchorEpochAckProof) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aux)
 }
 
-type EpochDataAttestation struct {
+type AggregatedEpochRotationProof struct {
 	EpochId       int               `json:"epochId"`
 	NextEpochId   int               `json:"nextEpochId"`
 	EpochData     NextEpochData     `json:"epochData"`
@@ -222,8 +222,8 @@ type EpochDataAttestation struct {
 	Proofs        map[string]string `json:"proofs"`
 }
 
-func (eda *EpochDataAttestation) UnmarshalJSON(data []byte) error {
-	type alias EpochDataAttestation
+func (eda *AggregatedEpochRotationProof) UnmarshalJSON(data []byte) error {
+	type alias AggregatedEpochRotationProof
 
 	var aux alias
 
@@ -235,13 +235,13 @@ func (eda *EpochDataAttestation) UnmarshalJSON(data []byte) error {
 		aux.Proofs = make(map[string]string)
 	}
 
-	*eda = EpochDataAttestation(aux)
+	*eda = AggregatedEpochRotationProof(aux)
 
 	return nil
 }
 
-func (eda EpochDataAttestation) MarshalJSON() ([]byte, error) {
-	type alias EpochDataAttestation
+func (eda AggregatedEpochRotationProof) MarshalJSON() ([]byte, error) {
+	type alias AggregatedEpochRotationProof
 
 	aux := alias(eda)
 
