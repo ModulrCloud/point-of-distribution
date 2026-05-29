@@ -52,6 +52,17 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 			resp.Block = &block
 		}
 	}
+	if stores.LastMileData != nil {
+		if heightBytes, err := stores.LastMileData.Get([]byte("BLOCK_TO_HEIGHT:"+key), nil); err == nil {
+			heightKey := fmt.Sprintf("HEIGHT_PROOF:%s", string(heightBytes))
+			if proofBytes, err := stores.LastMileData.Get([]byte(heightKey), nil); err == nil {
+				var proof external_structs.AggregatedHeightProof
+				if json.Unmarshal(proofBytes, &proof) == nil {
+					resp.AggregatedHeightProof = &proof
+				}
+			}
+		}
+	}
 	if resp.Block != nil {
 		if data, err := json.Marshal(resp); err == nil {
 			connection.WriteMessage(gws.OpcodeText, data)
@@ -325,6 +336,194 @@ func (lm *lockManager) releaseSlot() {
 		return
 	}
 	<-lm.semaphore
+}
+
+func handleAcceptAggregatedHeightProof(req AggregatedHeightProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("HEIGHT_PROOF:%d", req.Proof.AbsoluteHeight)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err == nil {
+			if req.Proof.BlockId != "" {
+				reverseKey := "BLOCK_TO_HEIGHT:" + req.Proof.BlockId
+				_ = stores.LastMileData.Put([]byte(reverseKey), []byte(strconv.Itoa(req.Proof.AbsoluteHeight)), nil)
+			}
+			acknowledge(connection)
+		}
+	}
+}
+
+func handleGetAggregatedHeightProof(req AggregatedHeightProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("HEIGHT_PROOF:%d", req.AbsoluteHeight)
+
+	var resp AggregatedHeightProofGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.AggregatedHeightProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
+func handleAcceptAggregatedEpochRotationProof(req AggregatedEpochRotationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("EPOCH_ROTATION_PROOF:%d", req.Proof.EpochId)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err != nil {
+			return
+		}
+	}
+
+	acknowledge(connection)
+}
+
+func handleGetAggregatedEpochRotationProof(req AggregatedEpochRotationProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("EPOCH_ROTATION_PROOF:%d", req.EpochId)
+
+	var resp AggregatedEpochRotationProofGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.AggregatedEpochRotationProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
+func handleAcceptAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil || req.Proof.NextEpochId <= 0 {
+		return
+	}
+
+	key := fmt.Sprintf("EPOCH_ANNOUNCEMENT_PROOF:%d", req.Proof.NextEpochId)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err != nil {
+			return
+		}
+	}
+
+	acknowledge(connection)
+}
+
+func handleGetAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("EPOCH_ANNOUNCEMENT_PROOF:%d", req.NextEpochId)
+
+	var resp AggregatedEpochAnnouncementProofGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.AggregatedEpochAnnouncementProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
+func handleAcceptAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("ANCHOR_EPOCH_ACK_PROOF:%d", req.Proof.EpochId)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err == nil {
+			acknowledge(connection)
+		}
+	}
+}
+
+func handleGetAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("ANCHOR_EPOCH_ACK_PROOF:%d", req.EpochId)
+
+	var resp AggregatedAnchorEpochAckProofGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.AggregatedAnchorEpochAckProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
+func handleGetBlockByHeight(req BlockByHeightRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil || stores.CoreBlocksData == nil {
+		return
+	}
+
+	heightKey := fmt.Sprintf("HEIGHT_PROOF:%d", req.AbsoluteHeight)
+
+	var resp BlockByHeightResponse
+
+	proofBytes, err := stores.LastMileData.Get([]byte(heightKey), nil)
+	if err != nil {
+		if data, err := json.Marshal(resp); err == nil {
+			connection.WriteMessage(gws.OpcodeText, data)
+		}
+		return
+	}
+
+	var proof external_structs.AggregatedHeightProof
+	if json.Unmarshal(proofBytes, &proof) != nil {
+		if data, err := json.Marshal(resp); err == nil {
+			connection.WriteMessage(gws.OpcodeText, data)
+		}
+		return
+	}
+	resp.AggregatedHeightProof = &proof
+
+	if proof.BlockId != "" {
+		if blockBytes, err := stores.CoreBlocksData.Get([]byte(proof.BlockId), nil); err == nil {
+			var block external_structs.CoreBlock
+			if json.Unmarshal(blockBytes, &block) == nil {
+				resp.Block = &block
+			}
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
 }
 
 func acknowledge(connection *gws.Conn) {
