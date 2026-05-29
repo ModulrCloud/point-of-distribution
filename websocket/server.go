@@ -148,6 +148,20 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_aggregated_epoch_rotation_proof_request"}`))
 		}
+	case "accept_aggregated_epoch_announcement_proof":
+		var req AggregatedEpochAnnouncementProofStoreRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleAcceptAggregatedEpochAnnouncementProof(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_epoch_announcement_proof_request"}`))
+		}
+	case "get_epoch_announcement_proof_from_pod":
+		var req AggregatedEpochAnnouncementProofGetRequest
+		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
+			handleGetAggregatedEpochAnnouncementProof(req, connection, h.stores)
+		} else {
+			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_get_epoch_announcement_proof_request"}`))
+		}
 	case "get_block_by_height":
 		var req BlockByHeightRequest
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {

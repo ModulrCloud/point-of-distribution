@@ -414,6 +414,43 @@ func handleGetAggregatedEpochRotationProof(req AggregatedEpochRotationProofGetRe
 	}
 }
 
+func handleAcceptAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil || req.Proof.NextEpochId <= 0 {
+		return
+	}
+
+	key := fmt.Sprintf("EPOCH_ANNOUNCEMENT_PROOF:%d", req.Proof.NextEpochId)
+
+	if proofBytes, err := json.Marshal(req.Proof); err == nil {
+		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err != nil {
+			return
+		}
+	}
+
+	acknowledge(connection)
+}
+
+func handleGetAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
+	if stores == nil || stores.LastMileData == nil {
+		return
+	}
+
+	key := fmt.Sprintf("EPOCH_ANNOUNCEMENT_PROOF:%d", req.NextEpochId)
+
+	var resp AggregatedEpochAnnouncementProofGetResponse
+
+	if proofBytes, err := stores.LastMileData.Get([]byte(key), nil); err == nil {
+		var proof external_structs.AggregatedEpochAnnouncementProof
+		if err := json.Unmarshal(proofBytes, &proof); err == nil {
+			resp.Proof = &proof
+		}
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		connection.WriteMessage(gws.OpcodeText, data)
+	}
+}
+
 func handleAcceptAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
 		return

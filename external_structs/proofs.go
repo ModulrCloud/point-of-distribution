@@ -174,7 +174,46 @@ type NextEpochData struct {
 	NextEpochValidatorsRegistry []string            `json:"nextEpochValidatorsRegistry"`
 	NextEpochQuorum             []string            `json:"nextEpochQuorum"`
 	NextEpochLeadersSequence    []string            `json:"nextEpochLeadersSequence"`
+	NextEpochStartTimestamp     uint64              `json:"nextEpochStartTimestamp"`
 	DelayedTransactions         []map[string]string `json:"delayedTransactions"`
+}
+
+type AggregatedEpochAnnouncementProof struct {
+	EpochId       int               `json:"epochId"`
+	NextEpochId   int               `json:"nextEpochId"`
+	EpochData     NextEpochData     `json:"epochData"`
+	EpochDataHash string            `json:"epochDataHash"`
+	Proofs        map[string]string `json:"proofs"`
+}
+
+func (eda *AggregatedEpochAnnouncementProof) UnmarshalJSON(data []byte) error {
+	type alias AggregatedEpochAnnouncementProof
+
+	var aux alias
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.Proofs == nil {
+		aux.Proofs = make(map[string]string)
+	}
+
+	*eda = AggregatedEpochAnnouncementProof(aux)
+
+	return nil
+}
+
+func (eda AggregatedEpochAnnouncementProof) MarshalJSON() ([]byte, error) {
+	type alias AggregatedEpochAnnouncementProof
+
+	aux := alias(eda)
+
+	if aux.Proofs == nil {
+		aux.Proofs = make(map[string]string)
+	}
+
+	return json.Marshal(aux)
 }
 
 type AggregatedAnchorEpochAckProof struct {

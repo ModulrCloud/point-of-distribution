@@ -92,6 +92,20 @@ type AggregatedEpochRotationProofGetResponse struct {
 	Proof *external_structs.AggregatedEpochRotationProof `json:"proof"`
 }
 
+type AggregatedEpochAnnouncementProofStoreRequest struct {
+	Route string                                            `json:"route"`
+	Proof external_structs.AggregatedEpochAnnouncementProof `json:"proof"`
+}
+
+type AggregatedEpochAnnouncementProofGetRequest struct {
+	Route       string `json:"route"`
+	NextEpochId int    `json:"nextEpochId"`
+}
+
+type AggregatedEpochAnnouncementProofGetResponse struct {
+	Proof *external_structs.AggregatedEpochAnnouncementProof `json:"proof"`
+}
+
 type BlockByHeightRequest struct {
 	Route          string `json:"route"`
 	AbsoluteHeight int    `json:"absoluteHeight"`
