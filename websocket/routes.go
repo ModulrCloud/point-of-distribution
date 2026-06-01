@@ -34,6 +34,7 @@ func newLockManager(limit int) *lockManager {
 func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := req.BlockId
 	if key == "" || stores == nil || stores.CoreBlocksData == nil {
+		writeError(connection, "invalid_get_block_with_afp_request")
 		return
 	}
 	var resp BlockWithAfpResponse
@@ -63,16 +64,13 @@ func handleGetBlockWithAfp(req BlockWithAfpRequest, connection *gws.Conn, stores
 			}
 		}
 	}
-	if resp.Block != nil {
-		if data, err := json.Marshal(resp); err == nil {
-			connection.WriteMessage(gws.OpcodeText, data)
-		}
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := req.BlockId
 	if key == "" || stores == nil || stores.AnchorsCoreBlocksData == nil {
+		writeError(connection, "invalid_get_anchor_block_with_afp_request")
 		return
 	}
 	var resp AnchorBlockWithAfpResponse
@@ -91,29 +89,29 @@ func handleGetAnchorBlockWithAfp(req AnchorBlockWithAfpRequest, connection *gws.
 			resp.Block = &block
 		}
 	}
-	if resp.Block != nil {
-		if data, err := json.Marshal(resp); err == nil {
-			connection.WriteMessage(gws.OpcodeText, data)
-		}
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleAcceptAggregatedLeaderFinalizationProof(req AggregatedLeaderFinalizationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := composeAggregatedLeaderFinalizationProofKey(req.Proof.EpochIndex, req.Proof.Leader)
 	if key == "" || stores == nil || stores.AggregatedLeaderFinalizationProofs == nil {
+		writeError(connection, "invalid_aggregated_leader_finalization_proof")
 		return
 	}
 
 	if proofBytes, err := json.Marshal(req.Proof); err == nil {
 		if err := stores.AggregatedLeaderFinalizationProofs.Put([]byte(key), proofBytes, nil); err == nil {
 			acknowledge(connection)
+			return
 		}
 	}
+	writeError(connection, "failed_to_store_aggregated_leader_finalization_proof")
 }
 
 func handleGetAggregatedLeaderFinalizationProof(req AggregatedLeaderFinalizationProofRequest, connection *gws.Conn, stores *databases.Stores) {
 	key := composeAggregatedLeaderFinalizationProofKey(req.EpochIndex, req.Leader)
 	if key == "" || stores == nil || stores.AggregatedLeaderFinalizationProofs == nil {
+		writeError(connection, "invalid_get_aggregated_leader_finalization_proof_request")
 		return
 	}
 
@@ -124,9 +122,7 @@ func handleGetAggregatedLeaderFinalizationProof(req AggregatedLeaderFinalization
 			resp.Proof = &proof
 		}
 	}
-	if data, err := json.Marshal(resp); err == nil {
-		connection.WriteMessage(gws.OpcodeText, data)
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores, locks *lockManager) {
@@ -135,25 +131,40 @@ func handleAcceptBlockWithAfp(req AcceptBlockWithAfpRequest, connection *gws.Con
 		blockKey = composeBlockKey(*locator)
 	}
 	if blockKey == "" || stores == nil || stores.CoreBlocksData == nil {
+		writeError(connection, "invalid_accept_block_with_afp_request")
 		return
 	}
+	stored := false
 	withBlockLock(blockKey, locks, func() {
 		if req.Block.Index > 0 {
 			if req.Afp == nil || !validateAfpForBlock(req.Block.Index, req.Block.PrevHash, *req.Afp) {
 				return
 			}
 		}
-		if blockBytes, err := json.Marshal(req.Block); err == nil {
-			if err := stores.CoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
-				if req.Afp != nil {
-					if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
-						_ = stores.CoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
-					}
+		if _, err := stores.CoreBlocksData.Get([]byte(blockKey), nil); err != nil {
+			if blockBytes, err := json.Marshal(req.Block); err == nil {
+				if err := stores.CoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err != nil {
+					return
 				}
-				acknowledge(connection)
+			} else {
+				return
 			}
 		}
+		if req.Afp != nil && req.Afp.BlockId != "" {
+			afpKey := []byte("AFP:" + req.Afp.BlockId)
+			if _, err := stores.CoreBlocksData.Get(afpKey, nil); err != nil {
+				if afpBytes, err := json.Marshal(req.Afp); err == nil {
+					_ = stores.CoreBlocksData.Put(afpKey, afpBytes, nil)
+				}
+			}
+		}
+		stored = true
 	})
+	if stored {
+		acknowledge(connection)
+		return
+	}
+	writeError(connection, "failed_to_store_block_with_afp")
 }
 
 func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connection *gws.Conn, stores *databases.Stores, locks *lockManager) {
@@ -162,25 +173,40 @@ func handleAcceptAnchorBlockWithAfp(req AcceptAnchorBlockWithAfpRequest, connect
 		blockKey = composeBlockKey(*locator)
 	}
 	if blockKey == "" || stores == nil || stores.AnchorsCoreBlocksData == nil {
+		writeError(connection, "invalid_accept_anchor_block_with_afp_request")
 		return
 	}
+	stored := false
 	withBlockLock(blockKey, locks, func() {
 		if req.Block.Index > 0 {
 			if req.Afp == nil || !validateAnchorAfpForBlock(req.Block.Index, req.Block.PrevHash, *req.Afp) {
 				return
 			}
 		}
-		if blockBytes, err := json.Marshal(req.Block); err == nil {
-			if err := stores.AnchorsCoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err == nil {
-				if req.Afp != nil {
-					if afpBytes, err := json.Marshal(req.Afp); err == nil && req.Afp.BlockId != "" {
-						_ = stores.AnchorsCoreBlocksData.Put([]byte("AFP:"+req.Afp.BlockId), afpBytes, nil)
-					}
+		if _, err := stores.AnchorsCoreBlocksData.Get([]byte(blockKey), nil); err != nil {
+			if blockBytes, err := json.Marshal(req.Block); err == nil {
+				if err := stores.AnchorsCoreBlocksData.Put([]byte(blockKey), blockBytes, nil); err != nil {
+					return
 				}
-				acknowledge(connection)
+			} else {
+				return
 			}
 		}
+		if req.Afp != nil && req.Afp.BlockId != "" {
+			afpKey := []byte("AFP:" + req.Afp.BlockId)
+			if _, err := stores.AnchorsCoreBlocksData.Get(afpKey, nil); err != nil {
+				if afpBytes, err := json.Marshal(req.Afp); err == nil {
+					_ = stores.AnchorsCoreBlocksData.Put(afpKey, afpBytes, nil)
+				}
+			}
+		}
+		stored = true
 	})
+	if stored {
+		acknowledge(connection)
+		return
+	}
+	writeError(connection, "failed_to_store_anchor_block_with_afp")
 }
 
 func nextBlockId(blockId string) string {
@@ -340,6 +366,7 @@ func (lm *lockManager) releaseSlot() {
 
 func handleAcceptAggregatedHeightProof(req AggregatedHeightProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_accept_aggregated_height_proof_request")
 		return
 	}
 
@@ -352,12 +379,15 @@ func handleAcceptAggregatedHeightProof(req AggregatedHeightProofStoreRequest, co
 				_ = stores.LastMileData.Put([]byte(reverseKey), []byte(strconv.Itoa(req.Proof.AbsoluteHeight)), nil)
 			}
 			acknowledge(connection)
+			return
 		}
 	}
+	writeError(connection, "failed_to_store_aggregated_height_proof")
 }
 
 func handleGetAggregatedHeightProof(req AggregatedHeightProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_get_aggregated_height_proof_request")
 		return
 	}
 
@@ -372,13 +402,12 @@ func handleGetAggregatedHeightProof(req AggregatedHeightProofGetRequest, connect
 		}
 	}
 
-	if data, err := json.Marshal(resp); err == nil {
-		connection.WriteMessage(gws.OpcodeText, data)
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleAcceptAggregatedEpochRotationProof(req AggregatedEpochRotationProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_accept_aggregated_epoch_rotation_proof_request")
 		return
 	}
 
@@ -386,15 +415,19 @@ func handleAcceptAggregatedEpochRotationProof(req AggregatedEpochRotationProofSt
 
 	if proofBytes, err := json.Marshal(req.Proof); err == nil {
 		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err != nil {
+			writeError(connection, "failed_to_store_aggregated_epoch_rotation_proof")
 			return
 		}
+		acknowledge(connection)
+		return
 	}
 
-	acknowledge(connection)
+	writeError(connection, "failed_to_encode_aggregated_epoch_rotation_proof")
 }
 
 func handleGetAggregatedEpochRotationProof(req AggregatedEpochRotationProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_get_aggregated_epoch_rotation_proof_request")
 		return
 	}
 
@@ -409,13 +442,12 @@ func handleGetAggregatedEpochRotationProof(req AggregatedEpochRotationProofGetRe
 		}
 	}
 
-	if data, err := json.Marshal(resp); err == nil {
-		connection.WriteMessage(gws.OpcodeText, data)
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleAcceptAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil || req.Proof.NextEpochId <= 0 {
+		writeError(connection, "invalid_accept_aggregated_epoch_announcement_proof_request")
 		return
 	}
 
@@ -423,15 +455,19 @@ func handleAcceptAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncemen
 
 	if proofBytes, err := json.Marshal(req.Proof); err == nil {
 		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err != nil {
+			writeError(connection, "failed_to_store_aggregated_epoch_announcement_proof")
 			return
 		}
+		acknowledge(connection)
+		return
 	}
 
-	acknowledge(connection)
+	writeError(connection, "failed_to_encode_aggregated_epoch_announcement_proof")
 }
 
 func handleGetAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_get_aggregated_epoch_announcement_proof_request")
 		return
 	}
 
@@ -446,13 +482,12 @@ func handleGetAggregatedEpochAnnouncementProof(req AggregatedEpochAnnouncementPr
 		}
 	}
 
-	if data, err := json.Marshal(resp); err == nil {
-		connection.WriteMessage(gws.OpcodeText, data)
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleAcceptAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofStoreRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_accept_aggregated_anchor_epoch_ack_proof_request")
 		return
 	}
 
@@ -461,12 +496,15 @@ func handleAcceptAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProof
 	if proofBytes, err := json.Marshal(req.Proof); err == nil {
 		if err := stores.LastMileData.Put([]byte(key), proofBytes, nil); err == nil {
 			acknowledge(connection)
+			return
 		}
 	}
+	writeError(connection, "failed_to_store_aggregated_anchor_epoch_ack_proof")
 }
 
 func handleGetAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofGetRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil {
+		writeError(connection, "invalid_get_aggregated_anchor_epoch_ack_proof_request")
 		return
 	}
 
@@ -481,13 +519,12 @@ func handleGetAggregatedAnchorEpochAckProof(req AggregatedAnchorEpochAckProofGet
 		}
 	}
 
-	if data, err := json.Marshal(resp); err == nil {
-		connection.WriteMessage(gws.OpcodeText, data)
-	}
+	writeJSONResponse(connection, resp)
 }
 
 func handleGetBlockByHeight(req BlockByHeightRequest, connection *gws.Conn, stores *databases.Stores) {
 	if stores == nil || stores.LastMileData == nil || stores.CoreBlocksData == nil {
+		writeError(connection, "invalid_get_block_by_height_request")
 		return
 	}
 
@@ -497,17 +534,13 @@ func handleGetBlockByHeight(req BlockByHeightRequest, connection *gws.Conn, stor
 
 	proofBytes, err := stores.LastMileData.Get([]byte(heightKey), nil)
 	if err != nil {
-		if data, err := json.Marshal(resp); err == nil {
-			connection.WriteMessage(gws.OpcodeText, data)
-		}
+		writeJSONResponse(connection, resp)
 		return
 	}
 
 	var proof external_structs.AggregatedHeightProof
 	if json.Unmarshal(proofBytes, &proof) != nil {
-		if data, err := json.Marshal(resp); err == nil {
-			connection.WriteMessage(gws.OpcodeText, data)
-		}
+		writeJSONResponse(connection, resp)
 		return
 	}
 	resp.AggregatedHeightProof = &proof
@@ -521,16 +554,22 @@ func handleGetBlockByHeight(req BlockByHeightRequest, connection *gws.Conn, stor
 		}
 	}
 
+	writeJSONResponse(connection, resp)
+}
+
+func writeJSONResponse(connection *gws.Conn, resp any) {
+	if connection == nil {
+		return
+	}
 	if data, err := json.Marshal(resp); err == nil {
 		connection.WriteMessage(gws.OpcodeText, data)
 	}
 }
 
+func writeError(connection *gws.Conn, status string) {
+	writeJSONResponse(connection, statusResponse{Status: status})
+}
+
 func acknowledge(connection *gws.Conn) {
-	if connection == nil {
-		return
-	}
-	if resp, err := json.Marshal(statusResponse{Status: "OK"}); err == nil {
-		connection.WriteMessage(gws.OpcodeText, resp)
-	}
+	writeJSONResponse(connection, statusResponse{Status: "OK"})
 }

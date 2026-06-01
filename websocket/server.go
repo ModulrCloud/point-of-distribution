@@ -17,6 +17,7 @@ type handler struct {
 	stores      *databases.Stores
 	coreLocks   *lockManager
 	anchorLocks *lockManager
+	logRequests bool
 }
 
 func (h *handler) OnOpen(conn *gws.Conn) {}
@@ -62,9 +63,11 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 			if req.Afp != nil {
 				afpBlockId, afpBlockHash = req.Afp.BlockId, req.Afp.BlockHash
 			}
-			log.Printf("[ws] accept_block_with_afp blockKey=%s epoch=%s creator=%s index=%d prevHash=%s hasAfp=%t afpBlockId=%s afpBlockHash=%s",
-				blockKey, req.Block.Epoch, req.Block.Creator, req.Block.Index, req.Block.PrevHash, req.Afp != nil, afpBlockId, afpBlockHash,
-			)
+			if h.logRequests {
+				log.Printf("[ws] accept_block_with_afp blockKey=%s epoch=%s creator=%s index=%d prevHash=%s hasAfp=%t afpBlockId=%s afpBlockHash=%s",
+					blockKey, req.Block.Epoch, req.Block.Creator, req.Block.Index, req.Block.PrevHash, req.Afp != nil, afpBlockId, afpBlockHash,
+				)
+			}
 			handleAcceptBlockWithAfp(req, connection, h.stores, h.coreLocks)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_block_with_afp_request"}`))
@@ -80,9 +83,11 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 			if req.Afp != nil {
 				afpBlockId, afpBlockHash = req.Afp.BlockId, req.Afp.BlockHash
 			}
-			log.Printf("[ws] accept_anchor_block_with_afp blockKey=%s epoch=%s creator=%s index=%d prevHash=%s hasAfp=%t afpBlockId=%s afpBlockHash=%s",
-				blockKey, req.Block.Epoch, req.Block.Creator, req.Block.Index, req.Block.PrevHash, req.Afp != nil, afpBlockId, afpBlockHash,
-			)
+			if h.logRequests {
+				log.Printf("[ws] accept_anchor_block_with_afp blockKey=%s epoch=%s creator=%s index=%d prevHash=%s hasAfp=%t afpBlockId=%s afpBlockHash=%s",
+					blockKey, req.Block.Epoch, req.Block.Creator, req.Block.Index, req.Block.PrevHash, req.Afp != nil, afpBlockId, afpBlockHash,
+				)
+			}
 			handleAcceptAnchorBlockWithAfp(req, connection, h.stores, h.anchorLocks)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_anchor_block_with_afp_request"}`))
@@ -92,9 +97,11 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 		if err := json.Unmarshal(message.Bytes(), &req); err == nil {
 			vsIndex, vsHash := req.Proof.VotingStat.Index, req.Proof.VotingStat.Hash
 			afpBlockId, afpBlockHash := req.Proof.VotingStat.Afp.BlockId, req.Proof.VotingStat.Afp.BlockHash
-			log.Printf("[ws] accept_aggregated_leader_finalization_proof epochIndex=%d leader=%s votingStatIndex=%d votingStatHash=%s afpBlockId=%s afpBlockHash=%s",
-				req.Proof.EpochIndex, req.Proof.Leader, vsIndex, vsHash, afpBlockId, afpBlockHash,
-			)
+			if h.logRequests {
+				log.Printf("[ws] accept_aggregated_leader_finalization_proof epochIndex=%d leader=%s votingStatIndex=%d votingStatHash=%s afpBlockId=%s afpBlockHash=%s",
+					req.Proof.EpochIndex, req.Proof.Leader, vsIndex, vsHash, afpBlockId, afpBlockHash,
+				)
+			}
 			handleAcceptAggregatedLeaderFinalizationProof(req, connection, h.stores)
 		} else {
 			connection.WriteMessage(gws.OpcodeText, []byte(`{"error":"invalid_accept_aggregated_leader_finalization_proof_request"}`))
@@ -177,7 +184,7 @@ func (h *handler) OnMessage(connection *gws.Conn, message *gws.Message) {
 func CreateWebsocketServer(cfg podconfig.Config, stores *databases.Stores) error {
 	coreLocks := newLockManager(cfg.MaxConcurrentLocks)
 	anchorLocks := newLockManager(cfg.MaxConcurrentLocks)
-	upgrader := gws.NewUpgrader(&handler{stores: stores, coreLocks: coreLocks, anchorLocks: anchorLocks}, &gws.ServerOption{
+	upgrader := gws.NewUpgrader(&handler{stores: stores, coreLocks: coreLocks, anchorLocks: anchorLocks, logRequests: cfg.LogRequests}, &gws.ServerOption{
 		ParallelEnabled:   true,
 		Recovery:          gws.Recovery,
 		PermessageDeflate: gws.PermessageDeflate{Enabled: true},

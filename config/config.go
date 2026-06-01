@@ -11,6 +11,7 @@ type Config struct {
 	WSPort             int    `json:"wsPort"`
 	DataPath           string `json:"dataPath"`
 	MaxConcurrentLocks int    `json:"maxConcurrentLocks"`
+	LogRequests        bool   `json:"logRequests"`
 }
 
 func Load() Config {
@@ -19,9 +20,13 @@ func Load() Config {
 		WSPort:             9070,
 		DataPath:           "poddata",
 		MaxConcurrentLocks: 100,
+		LogRequests:        true,
 	}
 
-	configPath := "configs.json"
+	configPath := os.Getenv("POD_CONFIG_PATH")
+	if configPath == "" {
+		configPath = "configs.json"
+	}
 	if !filepath.IsAbs(configPath) {
 		cwd, _ := os.Getwd()
 		configPath = filepath.Join(cwd, configPath)
